@@ -30,7 +30,7 @@ extern "C" {
 #define IMAGE_TLV_INFO_MAGIC        0x6907
 #define IMAGE_TLV_PROT_INFO_MAGIC   0x6908
 
-#define IMAGE_HEADER_SIZE           32
+#define IMAGE_HEADER_SIZE           (32 + 4)
 
 /** Image header flags. */
 #define IMAGE_F_NON_BOOTABLE        0x00000010 /* Split image app. */
@@ -50,9 +50,9 @@ struct image_version {
 };
 
 /** Image header.  All fields are in little endian byte order. */
-struct image_header {
+struct __attribute__((packed)) image_header {
     uint32_t ih_magic;
-    uint32_t ih_load_addr;
+    uint64_t ih_load_addr;
     uint16_t ih_hdr_size; /* Size of image header (bytes). */
     uint16_t _pad2;
     uint32_t ih_img_size; /* Does not include header. */
