@@ -75,13 +75,22 @@ img_mgmt_state_flags(int query_slot)
             flags |= IMG_MGMT_STATE_F_CONFIRMED;
         }
         break;
+
+    default:
+        printf("%s: Unknown swap type 0x%x, slot %s\n", __FUNCTION__,
+            swap_type, query_slot == IMG_MGMT_BOOT_CURR_SLOT ? "Primary" : "Secondary");
+        break;
     }
 
     /* Slot 0 is always active. */
     /* XXX: The slot 0 assumption only holds when running from flash. */
+    /********
+     * SCORPIO: If we erase primary slot, w'ell never be able to update it since
+     * it will always indicate active!
     if (query_slot == IMG_MGMT_BOOT_CURR_SLOT) {
         flags |= IMG_MGMT_STATE_F_ACTIVE;
     }
+     ************/
 
     return flags;
 }
