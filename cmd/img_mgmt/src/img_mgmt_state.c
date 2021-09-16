@@ -82,6 +82,8 @@ img_mgmt_state_flags(int query_slot)
         break;
     }
 
+#ifdef CONFIG_SCORPIO_BOOTLOADER
+
     /* Slot 0 is always active. */
     /* XXX: The slot 0 assumption only holds when running from flash. */
     /********
@@ -91,6 +93,10 @@ img_mgmt_state_flags(int query_slot)
         flags |= IMG_MGMT_STATE_F_ACTIVE;
     }
      ************/
+#else
+This whole scheme is so dubious since IMG_MGMT_BOOT_CURR_SLOT is hardcoded to zero.
+should use my who_booted routine instead?
+#endif
 
     return flags;
 }

@@ -345,7 +345,6 @@ img_mgmt_impl_erase_image_data(unsigned int off, unsigned int num_bytes)
         goto end;
     }
 
-printf("Entering %s\n", __FUNCTION__);
     rc = flash_area_open(g_img_mgmt_state.area_id, &fa);
     if (rc != 0) {
         LOG_ERR("Can't bind to the flash area (err %d)", rc);
@@ -404,7 +403,6 @@ printf("Entering %s\n", __FUNCTION__);
 end_fa:
     flash_area_close(fa);
 end:
-    printf("Exiting %s\n", __FUNCTION__);
     return rc;
 }
 
