@@ -27,6 +27,8 @@
 #include "img_mgmt_priv.h"
 #include "img_mgmt/img_mgmt_impl.h"
 
+#include "bootutil/bootutil_public.h"
+
 /**
  * Collects information about the specified image slot.
  */
@@ -34,7 +36,7 @@ uint8_t
 img_mgmt_state_flags(int query_slot)
 {
     uint8_t flags;
-    int swap_type;
+    //int swap_type;
 
     assert(query_slot == 0 || query_slot == 1);
 
@@ -43,6 +45,29 @@ img_mgmt_state_flags(int query_slot)
     /* Determine if this is is pending or confirmed (only applicable for
      * unified images and loaders.
      */
+#ifdef CONFIG_BOARD_SCORPIO
+    struct boot_swap_state state;
+    boot_read_swap_state_by_id(query_slot + 1, &state);
+
+#ifdef DEBUG
+    printf("%s: %d magic = %d\n",  __FUNCTION__, query_slot, state.magic);
+    printf("%s: %d copy_done = %d\n",  __FUNCTION__, query_slot, state.copy_done);
+    printf("%s: %d image_ok = %d\n",  __FUNCTION__, query_slot, state.image_ok);
+    printf("%s: %d swap_type = %d\n",  __FUNCTION__, query_slot, state.swap_type);
+#endif
+
+    if (state.magic == BOOT_MAGIC_GOOD)
+    {
+        if (state.image_ok == BOOT_FLAG_SET)
+        {
+            flags |= IMG_MGMT_STATE_F_CONFIRMED;
+        }
+        if (state.copy_done == BOOT_FLAG_SET)
+        {
+            flags |= IMG_MGMT_STATE_F_ACTIVE;
+        }
+    }
+#else
     swap_type = img_mgmt_impl_swap_type();
     switch (swap_type) {
     case IMG_MGMT_SWAP_TYPE_NONE:
@@ -93,10 +118,11 @@ img_mgmt_state_flags(int query_slot)
     }
      ************/
 #else
-This whole scheme is so dubious since IMG_MGMT_BOOT_CURR_SLOT is hardcoded to zero.
-should use who_booted routine instead?
+//This whole scheme is so dubious since IMG_MGMT_BOOT_CURR_SLOT is hardcoded to zero.
+//should use who_booted routine instead?
 #endif
 
+#endif // CONFIG_BOARD_SCORPIO
     return flags;
 }
 
