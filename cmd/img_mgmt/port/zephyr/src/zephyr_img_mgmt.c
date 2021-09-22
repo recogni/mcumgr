@@ -345,6 +345,10 @@ img_mgmt_impl_erase_image_data(unsigned int off, unsigned int num_bytes)
         goto end;
     }
 
+    printf("mcumgr: Uploading image, Clearing %s area (%d) for image\n",
+        g_img_mgmt_state.area_id == zephyr_img_mgmt_flash_area_id(0) ? "Primary" : "Secondary",
+        g_img_mgmt_state.area_id);
+
     rc = flash_area_open(g_img_mgmt_state.area_id, &fa);
     if (rc != 0) {
         LOG_ERR("Can't bind to the flash area (err %d)", rc);
@@ -415,7 +419,8 @@ int img_mgmt_impl_erase_if_needed(uint32_t off, uint32_t len)
 int
 img_mgmt_impl_swap_type(void)
 {
-    switch (mcuboot_swap_type()) {
+    int swap = mcuboot_swap_type();
+    switch (swap) {
     case BOOT_SWAP_TYPE_NONE:
         return IMG_MGMT_SWAP_TYPE_NONE;
     case BOOT_SWAP_TYPE_TEST:
@@ -425,6 +430,7 @@ img_mgmt_impl_swap_type(void)
     case BOOT_SWAP_TYPE_REVERT:
         return IMG_MGMT_SWAP_TYPE_REVERT;
     default:
+        printf("%s: Unknown swap type; 0x%x\n", __FUNCTION__, swap);
         assert(0);
         return IMG_MGMT_SWAP_TYPE_NONE;
     }
@@ -509,6 +515,7 @@ img_mgmt_impl_upload_inspect(const struct img_mgmt_upload_req *req,
         if (action->area_id < 0) {
             /* No slot where to upload! */
             *errstr = img_mgmt_err_str_no_slot;
+            printf("%s: No empty slot!!!\n", __FUNCTION__);
             return MGMT_ERR_ENOMEM;
         }
 
