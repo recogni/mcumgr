@@ -345,6 +345,10 @@ img_mgmt_impl_erase_image_data(unsigned int off, unsigned int num_bytes)
         goto end;
     }
 
+    printf("mcumgr: Uploading image, Clearing %s area (%d) for image\n",
+        g_img_mgmt_state.area_id == zephyr_img_mgmt_flash_area_id(0) ? "Primary" : "Secondary",
+        g_img_mgmt_state.area_id);
+
     rc = flash_area_open(g_img_mgmt_state.area_id, &fa);
     if (rc != 0) {
         LOG_ERR("Can't bind to the flash area (err %d)", rc);
@@ -376,7 +380,6 @@ img_mgmt_impl_erase_image_data(unsigned int off, unsigned int num_bytes)
     }
 
     LOG_INF("Erased 0x%zx bytes of image slot", erase_size);
-    printf("Erased 0x%lx bytes of image slot\n", erase_size);
 
     /* erase the image trailer area if it was not erased */
     off = BOOT_TRAILER_IMG_STATUS_OFFS(fa);
