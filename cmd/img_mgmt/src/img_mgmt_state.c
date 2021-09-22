@@ -36,7 +36,6 @@ uint8_t
 img_mgmt_state_flags(int query_slot)
 {
     uint8_t flags;
-    //int swap_type;
 
     assert(query_slot == 0 || query_slot == 1);
 
@@ -68,7 +67,7 @@ img_mgmt_state_flags(int query_slot)
         }
     }
 #else
-    swap_type = img_mgmt_impl_swap_type();
+    int swap_type = img_mgmt_impl_swap_type();
     switch (swap_type) {
     case IMG_MGMT_SWAP_TYPE_NONE:
         if (query_slot == IMG_MGMT_BOOT_CURR_SLOT) {
@@ -106,22 +105,6 @@ img_mgmt_state_flags(int query_slot)
             swap_type, query_slot == IMG_MGMT_BOOT_CURR_SLOT ? "Primary" : "Secondary");
         break;
     }
-
-#ifdef CONFIG_BOARD_SCORPIO
-    /* Slot 0 is always active. */
-    /* XXX: The slot 0 assumption only holds when running from flash. */
-    /********
-     * SCORPIO: If we erase primary slot, w'ell never be able to update it since
-     * it will always indicate active!
-    if (query_slot == IMG_MGMT_BOOT_CURR_SLOT) {
-        flags |= IMG_MGMT_STATE_F_ACTIVE;
-    }
-     ************/
-#else
-//This whole scheme is so dubious since IMG_MGMT_BOOT_CURR_SLOT is hardcoded to zero.
-//should use who_booted routine instead?
-#endif
-
 #endif // CONFIG_BOARD_SCORPIO
     return flags;
 }

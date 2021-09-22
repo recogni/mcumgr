@@ -398,7 +398,6 @@ img_mgmt_impl_erase_image_data(unsigned int off, unsigned int num_bytes)
         }
 
         LOG_INF("Erased 0x%zx bytes of image slot trailer", erase_size);
-        printf("Erased 0x%lx bytes of image slot trailer\n", erase_size);
     }
 
     rc = 0;

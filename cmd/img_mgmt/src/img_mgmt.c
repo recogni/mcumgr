@@ -387,7 +387,6 @@ img_mgmt_upload_log(bool is_first, bool is_last, int status)
 
 /**
  * Command handler: image upload
- * Brett: Come here for packet request...basicly once per sector being uploaded
  */
 static int
 img_mgmt_upload(struct mgmt_ctxt *ctxt)
