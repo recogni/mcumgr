@@ -385,6 +385,10 @@ img_mgmt_upload_log(bool is_first, bool is_last, int status)
     return 0;
 }
 
+#ifdef CONFIG_BOARD_SCORPIO
+int img_mgmt_impl_write_trailer(int slot);
+#endif
+
 /**
  * Command handler: image upload
  */
@@ -541,6 +545,9 @@ img_mgmt_upload(struct mgmt_ctxt *ctxt)
             g_img_mgmt_state.off += action.write_bytes;
             if (g_img_mgmt_state.off == g_img_mgmt_state.size) {
                 /* Done */
+#ifdef CONFIG_BOARD_SCORPIO
+                img_mgmt_impl_write_trailer(action.area_id - 1);
+#endif
                 img_mgmt_dfu_pending();
                 cmd_status_arg.status = IMG_MGMT_ID_UPLOAD_STATUS_ONGOING;
                 g_img_mgmt_state.area_id = -1;

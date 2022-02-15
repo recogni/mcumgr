@@ -257,6 +257,70 @@ img_mgmt_impl_write_confirmed(void)
     return 0;
 }
 
+#ifdef CONFIG_BOARD_SCORPIO
+int boot_write_magic(const struct flash_area *fap);
+int boot_write_image_ok(const struct flash_area *fap);
+int boot_write_trailer_flag(const struct flash_area *fap, uint32_t off, uint8_t flag_val);
+
+static inline uint32_t boot_magic_off(const struct flash_area *fap)
+{
+    return fap->fa_size - BOOT_MAGIC_SZ;
+}
+
+static inline uint32_t boot_image_ok_off(const struct flash_area *fap)
+{
+    return boot_magic_off(fap) - BOOT_MAX_ALIGN;
+}
+
+static inline uint32_t boot_copy_done_off(const struct flash_area *fap)
+{
+    return boot_image_ok_off(fap) - BOOT_MAX_ALIGN;
+}
+
+static int boot_write_copy_done(const struct flash_area *fap)
+{
+    uint32_t off = boot_copy_done_off(fap);
+    return boot_write_trailer_flag(fap, off, 1);
+}
+
+/* Fix up missing trailer.  Slot is 0 based. */
+int img_mgmt_impl_write_trailer(int slot)
+{
+    const struct flash_area *fa;
+    int ret;
+
+    ret = flash_area_open(zephyr_img_mgmt_flash_area_id(slot), &fa);
+    if (ret != 0) {
+      return MGMT_ERR_EUNKNOWN;
+    }
+
+    ret = boot_write_magic(fa);
+    if (ret != 0)
+    {
+        printf("img_mgmt_write_trailer:  Writing Magic had error %d\n", ret);
+        return ret;
+    }
+
+    ret = boot_write_copy_done(fa);
+    if (ret != 0)
+    {
+        printf("img_mgmt_write_trailer:  Writing copy_done had error %d\n", ret);
+        return ret;
+    }
+
+    ret = boot_write_image_ok(fa);
+    if (ret != 0)
+    {
+        printf("img_mgmt_write_trailer:  Writing img_ok had error %d\n", ret);
+        return ret;
+    }
+
+    flash_area_close(fa);
+
+    return 0;
+}
+#endif //CONFIG_BOARD_SCORPIO
+
 int
 img_mgmt_impl_read(int slot, unsigned int offset, void *dst,
                    unsigned int num_bytes)
