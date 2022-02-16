@@ -259,7 +259,6 @@ img_mgmt_impl_write_confirmed(void)
 
 #ifdef CONFIG_BOARD_SCORPIO
 int boot_write_magic(const struct flash_area *fap);
-int boot_write_image_ok(const struct flash_area *fap);
 int boot_write_trailer_flag(const struct flash_area *fap, uint32_t off, uint8_t flag_val);
 
 static inline uint32_t boot_magic_off(const struct flash_area *fap)
@@ -277,46 +276,54 @@ static inline uint32_t boot_copy_done_off(const struct flash_area *fap)
     return boot_image_ok_off(fap) - BOOT_MAX_ALIGN;
 }
 
-static int boot_write_copy_done(const struct flash_area *fap)
-{
-    uint32_t off = boot_copy_done_off(fap);
-    return boot_write_trailer_flag(fap, off, 1);
-}
+#define BOOT_MAGIC_WORDS    BOOT_MAGIC_SZ/sizeof(uint32_t)
+static const uint32_t boot_img_magic[] = {
+    0xf395c277,
+    0x7fefd260,
+    0x0f505235,
+    0x8079b62c,
+};
 
 /* Fix up missing trailer.  Slot is 0 based. */
 int img_mgmt_impl_write_trailer(int slot)
 {
     const struct flash_area *fa;
-    int ret;
+    uint32_t img_magic[BOOT_MAGIC_WORDS];
+    int ret, i;
 
     ret = flash_area_open(zephyr_img_mgmt_flash_area_id(slot), &fa);
     if (ret != 0) {
       return MGMT_ERR_EUNKNOWN;
     }
 
-    ret = boot_write_magic(fa);
-    if (ret != 0)
-    {
-        printf("img_mgmt_write_trailer:  Writing Magic had error %d\n", ret);
-        return ret;
+    ret = flash_area_read(fa, boot_magic_off(fa), img_magic, BOOT_MAGIC_SZ);
+    if (ret != 0) {
+        printf("Reading MAGIC failed\n");
+        return -1;
     }
 
-    ret = boot_write_copy_done(fa);
-    if (ret != 0)
-    {
-        printf("img_mgmt_write_trailer:  Writing copy_done had error %d\n", ret);
-        return ret;
+    /* Check for good magic */
+    for (i = 0; i < BOOT_MAGIC_WORDS; i++) {
+        if (img_magic[i] != boot_img_magic[i])
+            break;
     }
 
-    ret = boot_write_image_ok(fa);
-    if (ret != 0)
-    {
-        printf("img_mgmt_write_trailer:  Writing img_ok had error %d\n", ret);
-        return ret;
+    /* If trailer magic is missing, add trailer */
+    if (i < BOOT_MAGIC_WORDS) {
+
+        printf("Detected unpadded image, do trailer fixup.\n");
+
+        /* 
+         * Use erase_val vs UNSET because bootloader will use boot_flag_decode()
+         * to translate UNSET into BAD unless the value matches erase_value.
+         */
+        uint8_t erase_val = flash_area_erased_val(fa);
+        assert(boot_write_magic(fa) == 0);
+        assert(boot_write_trailer_flag(fa, boot_copy_done_off(fa), erase_val) == 0); /* Mark it not booted */
+        assert(boot_write_trailer_flag(fa, boot_image_ok_off(fa), erase_val) == 0);  /* Mark it not confirmed */
     }
 
     flash_area_close(fa);
-
     return 0;
 }
 #endif //CONFIG_BOARD_SCORPIO
