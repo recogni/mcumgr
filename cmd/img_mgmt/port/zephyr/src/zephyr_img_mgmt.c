@@ -260,6 +260,8 @@ img_mgmt_impl_write_confirmed(void)
 #ifdef CONFIG_BOARD_SCORPIO
 int boot_write_magic(const struct flash_area *fap);
 int boot_write_trailer_flag(const struct flash_area *fap, uint32_t off, uint8_t flag_val);
+extern const uint32_t boot_img_magic[];
+#define BOOT_MAGIC_WORDS    BOOT_MAGIC_SZ/sizeof(uint32_t)
 
 static inline uint32_t boot_magic_off(const struct flash_area *fap)
 {
@@ -275,14 +277,6 @@ static inline uint32_t boot_copy_done_off(const struct flash_area *fap)
 {
     return boot_image_ok_off(fap) - BOOT_MAX_ALIGN;
 }
-
-#define BOOT_MAGIC_WORDS    BOOT_MAGIC_SZ/sizeof(uint32_t)
-static const uint32_t boot_img_magic[] = {
-    0xf395c277,
-    0x7fefd260,
-    0x0f505235,
-    0x8079b62c,
-};
 
 /* Fix up missing trailer.  Slot is 0 based. */
 int img_mgmt_impl_write_trailer(int slot)
@@ -311,7 +305,7 @@ int img_mgmt_impl_write_trailer(int slot)
     /* If trailer magic is missing, add trailer */
     if (i < BOOT_MAGIC_WORDS) {
 
-        printf("Detected unpadded image, do trailer fixup.\n");
+        printf("Detected unpadded image, fixup trailer.\n");
 
         /* 
          * Use erase_val vs UNSET because bootloader will use boot_flag_decode()
