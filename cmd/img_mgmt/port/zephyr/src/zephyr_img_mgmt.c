@@ -312,9 +312,24 @@ int img_mgmt_impl_write_trailer(int slot)
          * to translate UNSET into BAD unless the value matches erase_value.
          */
         uint8_t erase_val = flash_area_erased_val(fa);
-        assert(boot_write_magic(fa) == 0);
-        assert(boot_write_trailer_flag(fa, boot_copy_done_off(fa), erase_val) == 0); /* Mark it not booted */
-        assert(boot_write_trailer_flag(fa, boot_image_ok_off(fa), erase_val) == 0);  /* Mark it not confirmed */
+
+        /* Write magic */
+        if ((ret = boot_write_magic(fa)) != 0)
+        {
+            printf("boot_write_magic() failed, %d\n", ret);
+        }
+
+        /* Mark it not booted */
+        if ((ret = boot_write_trailer_flag(fa, boot_copy_done_off(fa), erase_val)) != 0)
+        {
+            printf("boot_write_trailer_flag():copy_done failed, %d\n", ret);
+        }
+
+        /* Mark it not confirmed */
+        if ((ret = boot_write_trailer_flag(fa, boot_image_ok_off(fa), erase_val)) != 0)
+        {
+            printf("boot_write_trailer_flag():image_ok failed, %d\n", ret);
+        }
     }
 
     flash_area_close(fa);
