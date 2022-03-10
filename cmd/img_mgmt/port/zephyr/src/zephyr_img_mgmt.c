@@ -63,6 +63,15 @@ zephyr_img_mgmt_flash_check_empty(uint8_t fa_id, bool *out_empty)
     erased_val_32 = ERASED_VAL_32(erased_val);
 
     end = fa->fa_size;
+
+#ifdef CONFIG_BOARD_SCORPIO
+    /* 
+     * Scanning the entire slot takes too long.
+     * Just looking at first sector is good enough.
+     */
+    end = MIN(512, fa->fa_size);
+#endif
+
     for (addr = 0; addr < end; addr += sizeof data) {
         if (end - addr < sizeof data) {
             bytes_to_read = end - addr;
@@ -218,10 +227,13 @@ img_mgmt_impl_erase_slot(void)
     }
 
     if (!empty) {
+        printf("mcumgr: Slot %d: Erasing.\n", best_id);
         rc = boot_erase_img_bank(best_id);
         if (rc != 0) {
             return MGMT_ERR_EUNKNOWN;
         }
+    } else {
+        printf("mcumgr: Slot %d: Previously erased, skip erase.\n", best_id);
     }
 
     return 0;
@@ -305,7 +317,7 @@ int img_mgmt_impl_write_trailer(int slot)
     /* If trailer magic is missing, add trailer */
     if (i < BOOT_MAGIC_WORDS) {
 
-        printf("Detected unpadded image, fixup trailer.\n");
+        //printf("Detected unpadded image, fixup trailer.\n");
 
         /* 
          * Use erase_val vs UNSET because bootloader will use boot_flag_decode()
