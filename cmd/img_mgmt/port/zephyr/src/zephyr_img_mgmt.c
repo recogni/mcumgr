@@ -214,26 +214,71 @@ int
 img_mgmt_impl_erase_slot(void)
 {
     bool empty;
-    int rc, best_id;
+    int rc;
+    int best_id;    /* flash area id */
+    int best_slot;  /* slot index */
 
-    /* Select any non-active, unused slot */
+    /* Select a non-active, unconfirmed slot if possible */
     best_id = img_mgmt_get_unused_slot_area_id(-1);
     if (best_id < 0) {
+#ifdef CONFIG_BOARD_SCORPIO
+        /*
+         * Default code bails if either slot is either confirmed or active,
+         * meaning once both slots are filled and confirmed (or booted) there
+         * is no way erase either slot using this path.
+         *
+         * Scorpio has direct access to both slots so can erase, fill
+         * or boot either slot, so:
+         * - If one or more slots has no flags set, erase slot returned by
+         *    img_mgmt_get_unused_slot_area_id() (original code path).
+         * Otherwise (each slot has some combo of active/confirmed):
+         * - If one of the slots is unconfirmed, delete the unconfirmed.
+         *  (confirmed has precedence over active)
+         * - If both slots are confirmed, delete inactive.
+         *  (confirmed & active has precedence over confirmed & non-active)
+         *
+         * Note: There is an explicit assumption throughout img_mnt code that there
+         * are only two slots... we rely on that here as well.
+         */
+        uint8_t flags_0 = img_mgmt_state_flags(0);
+        uint8_t flags_1 = img_mgmt_state_flags(1);
+
+        if ((flags_0 & IMG_MGMT_STATE_F_CONFIRMED) && (flags_1 & IMG_MGMT_STATE_F_CONFIRMED))
+        {
+            /* Both are confirmed, choose inactive to delete*/
+            best_slot = (flags_0 & IMG_MGMT_STATE_F_ACTIVE) ? 1 : 0;
+            printf("erase: both slots confirmed, erase inactive\n");
+        } else {
+            /* Only one slot is confirmed, choose unconfirmed to delete */
+            best_slot = (flags_0 & IMG_MGMT_STATE_F_CONFIRMED) ? 1 : 0;
+            printf("erase: erase unconfirmed slot\n");
+        }
+
+        /* Convert slot to flash area id */
+        best_id = zephyr_img_mgmt_flash_area_id(best_slot);
+#else
+        printf("mcumgr: No unused slot to erase.\n");
         return MGMT_ERR_EUNKNOWN;
+#endif
     }
+
+    /* Use best_slot for printing debug msgs */
+    best_slot = (best_id == FLASH_AREA_ID(image_0)) ? 0 : 1;
+
     rc = zephyr_img_mgmt_flash_check_empty(best_id, &empty);
     if (rc != 0) {
+        printf("mcumgr: zephyr_img_mgmt_flash_check_empty(%s) failed\n", best_slot == 0 ? "Primary" : "Secondary");
         return MGMT_ERR_EUNKNOWN;
     }
 
     if (!empty) {
-        printf("mcumgr: Slot %d: Erasing.\n", best_id);
+        printf("mcumgr: Erasing %s slot.\n", best_slot == 0 ? "Primary" : "Secondary");
         rc = boot_erase_img_bank(best_id);
         if (rc != 0) {
             return MGMT_ERR_EUNKNOWN;
         }
     } else {
-        printf("mcumgr: Slot %d: Previously erased, skip erase.\n", best_id);
+        printf("mcumgr: %s slot: Already empty.\n", best_slot == 0 ? "Primary" : "Secondary");
     }
 
     return 0;
