@@ -304,6 +304,12 @@ img_mgmt_erase(struct mgmt_ctxt *ctxt)
      */
     rc = img_mgmt_read_info(1, &ver, NULL, NULL);
 
+#ifndef CONFIG_BOARD_SCORPIO
+    /* Default code assumes only secondary slot can be erased
+     * and bails immediatly if secondary slot has any flags set.
+     * Scorpio does not have this restriction and can erase, fill
+     * or boot either slot so bypass this check.
+     */
     if (rc == 0) {
         /* Image info is valid. */
         if (img_mgmt_slot_in_use(1)) {
@@ -311,6 +317,7 @@ img_mgmt_erase(struct mgmt_ctxt *ctxt)
             return MGMT_ERR_EBADSTATE;
         }
     }
+#endif
     
     rc = img_mgmt_impl_erase_slot();
 
