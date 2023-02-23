@@ -17,6 +17,7 @@
  * under the License.
  */
 
+#include <zephyr.h>
 #include <fs/fs.h>
 #include <mgmt/mgmt.h>
 #include <fs_mgmt/fs_mgmt_impl.h>
@@ -110,24 +111,47 @@ int
 fs_mgmt_impl_write(const char *path, size_t offset, const void *data,
                    size_t len)
 {
-    struct fs_file_t file;
+    static struct fs_file_t file;
+    static char *previous_path = NULL;
     int rc;
- 
-    /* Truncate the file before writing the first chunk.  This is done to
-     * properly handle an overwrite of an existing file.
-     *
-     */
-    if (offset == 0) {
-        rc = zephyr_fs_mgmt_truncate(path);
-        if (rc != 0) {
-            return rc;
-        }
-    }
 
-    fs_file_t_init(&file);
-    rc = fs_open(&file, path, FS_O_CREATE | FS_O_WRITE);
-    if (rc != 0) {
-        return MGMT_ERR_EUNKNOWN;
+    /* If there isn't a previously-opened file path or this write
+     * is for a different file path than that previous one...
+     */
+    if (previous_path == NULL || strcmp(path, previous_path) != 0) {
+        /* If there is a previously-opened file path, close the
+         * file and free the storage allocated for the file path
+         */
+        if (previous_path != NULL) {
+            fs_close(&file);
+            k_free(previous_path);
+            previous_path = NULL;
+        }
+
+        /* Truncate the file before writing the first chunk.  This is done to
+         * properly handle an overwrite of an existing file.
+         *
+         */
+        if (offset == 0) {
+            rc = zephyr_fs_mgmt_truncate(path);
+            if (rc != 0) {
+                return rc;
+            }
+        }
+
+        fs_file_t_init(&file);
+        rc = fs_open(&file, path, FS_O_CREATE | FS_O_WRITE);
+        if (rc != 0) {
+            return MGMT_ERR_EUNKNOWN;
+        }
+
+        /* Allocate storage for the opened file path and and duplicate it */
+        previous_path = k_malloc(strlen(path) + 1);
+        if (previous_path == NULL) {
+            fs_close(&file);
+            return MGMT_ERR_ENOMEM;
+        }
+        strcpy(previous_path, path);
     }
 
     rc = fs_seek(&file, offset, FS_SEEK_SET);
@@ -140,11 +164,8 @@ fs_mgmt_impl_write(const char *path, size_t offset, const void *data,
         goto done;
     }
 
-    rc = 0;
-
 done:
-    fs_close(&file);
-
+    rc = fs_sync(&file);
     if (rc != 0) {
         return MGMT_ERR_EUNKNOWN;
     } else {
