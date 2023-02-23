@@ -115,10 +115,10 @@ fs_mgmt_impl_write(const char *path, size_t offset, const void *data,
     static char *previous_path = NULL;
     int rc;
 
-    /* If there isn't a previously-opened file path or this write
-     * is for a different file path than that previous one...
+    /* If this is the write of the first chunk or there isn't a previously-opened
+     * file path or this write is for a different file path than that previous one...
      */
-    if (previous_path == NULL || strcmp(path, previous_path) != 0) {
+    if (offset == 0 || previous_path == NULL || strcmp(path, previous_path) != 0) {
         /* If there is a previously-opened file path, close the
          * file and free the storage allocated for the file path
          */
