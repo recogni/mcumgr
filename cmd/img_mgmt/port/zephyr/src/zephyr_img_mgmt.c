@@ -335,6 +335,40 @@ static inline uint32_t boot_copy_done_off(const struct flash_area *fap)
     return boot_image_ok_off(fap) - BOOT_MAX_ALIGN;
 }
 
+/* Erase the entire trailer. */
+int img_mgmt_impl_erase_trailer(int slot)
+{
+    const struct flash_area *fa;
+    int ret;
+    unsigned int off;
+    struct flash_pages_info page;
+    size_t erase_size;
+
+    ret = flash_area_open(zephyr_img_mgmt_flash_area_id(slot), &fa);
+    if (ret != 0) {
+      return MGMT_ERR_EUNKNOWN;
+    }
+
+    const struct device *dev = flash_area_get_device(fa);
+
+    /* align requested erase size to the erase-block-size */
+    off = BOOT_TRAILER_IMG_STATUS_OFFS(fa);
+    ret = flash_get_page_info_by_offs(dev, fa->fa_off + off, &page);
+
+    off = page.start_offset - fa->fa_off;
+    erase_size = fa->fa_size - off;
+
+    ret = flash_area_erase(fa, off, erase_size);
+    if (ret != 0) {
+        LOG_ERR("Fail to erase trailer, slot %d, len 0x%zx bytes, err %d",
+                slot, erase_size, ret);
+        ret = MGMT_ERR_EUNKNOWN;
+    }
+
+    flash_area_close(fa);
+    return ret;
+}
+
 /* Fix up missing trailer.  Slot is 0 based. */
 int img_mgmt_impl_write_trailer(int slot)
 {
